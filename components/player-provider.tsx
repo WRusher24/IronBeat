@@ -12,6 +12,7 @@ import {
 } from "react";
 import { AudioEngine } from "@/lib/audio-engine";
 import type { Track } from "@/lib/types";
+import { shuffle as shuffleTracks } from "@/lib/utils";
 import { useToast } from "@/components/toast";
 
 export type RepeatMode = "off" | "all" | "one";
@@ -92,6 +93,8 @@ interface PlayerContextValue {
   expanded: boolean;
   launching: string | null;
   /** When on, YouTube tracks are skipped because iOS cannot keep them playing with the screen locked. */
+  /** Number of YouTube results the last launch() hid because background-safe mode is on. */
+  hiddenYouTube: number;
   backgroundSafe: boolean;
   setBackgroundSafe(value: boolean): void;
   setExpanded(value: boolean): void;
@@ -135,6 +138,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [launching, setLaunching] = useState<string | null>(null);
   const [backgroundSafe, setBackgroundSafeState] = useState(false);
   const backgroundSafeRef = useRef(false);
+  const [hiddenYouTube, setHiddenYouTube] = useState(0);
 
   // Default to background-safe on iPhone/iPad, where embedded YouTube audio stops when the screen locks.
   useEffect(() => {
@@ -165,6 +169,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const errorStreak = useRef(0);
   /** False while a restored session is merely loaded; stops error-skipping from auto-starting music. */
   const userStarted = useRef(false);
+  /** Queue order before shuffle was switched on, so switching it off restores the list order. */
+  const originalQueue = useRef<Track[] | null>(null);
   const positionRef = useRef(0);
 
   const current = index >= 0 ? (queue[index] ?? null) : null;
@@ -184,26 +190,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const advance = useCallback(
     (reason: "ended" | "skip" | "error") => {
-      const { queue: q, index: i, shuffleOn: shuf, repeat: rep } = live.current;
+      const { queue: q, index: i, repeat: rep } = live.current;
       if (q.length === 0) return;
       if (reason === "ended" && rep === "one") {
         engineRef.current?.seek(0);
         engineRef.current?.play();
         return;
       }
-      let target: number;
-      if (shuf && q.length > 1) {
-        do {
-          target = Math.floor(Math.random() * q.length);
-        } while (target === i);
-      } else {
-        target = i + 1;
-        if (target >= q.length) {
-          if (rep === "all" || reason === "skip") target = 0;
-          else {
-            setPlaying(false);
-            return;
-          }
+      // Always move to the next entry of the queue so "Up next" is exactly what plays.
+      // Shuffle reorders the queue once when it is switched on (see toggleShuffle).
+      let target = i + 1;
+      if (target >= q.length) {
+        if (rep === "all" || reason === "skip") target = 0;
+        else {
+          setPlaying(false);
+          return;
         }
       }
       startIndex(target);
@@ -287,6 +288,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
       if (tracks.length === 0) return;
       errorStreak.current = 0;
+      if (live.current.shuffleOn && tracks.length > 1) {
+        // Shuffle stays on across new lists: the chosen track first, the rest in random order.
+        const chosen = tracks[first];
+        originalQueue.current = tracks;
+        startIndex(0, [chosen, ...shuffleTracks(tracks.filter((_, k) => k !== first))]);
+        return;
+      }
+      originalQueue.current = null;
       startIndex(first, tracks);
     },
     [startIndex, notify],
@@ -301,6 +310,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       try {
         const loaded = await loader();
         const tracks = backgroundSafeRef.current ? loaded.filter((t) => t.source !== "youtube") : loaded;
+        setHiddenYouTube(loaded.length - tracks.length);
         if (tracks.length === 0) {
           notify("No playable tracks found. Try another search.");
         } else {
@@ -358,7 +368,33 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setPosition(seconds);
   }, []);
 
-  const toggleShuffle = useCallback(() => setShuffleOn((v) => !v), []);
+  const toggleShuffle = useCallback(() => {
+    const { queue: q, index: i, shuffleOn: on } = live.current;
+    if (!on) {
+      if (q.length > 1 && i >= 0) {
+        // Keep the current track where it is and shuffle only what comes after it.
+        const upcoming = shuffleTracks(q.slice(i + 1));
+        const reordered = [...q.slice(0, i + 1), ...upcoming];
+        originalQueue.current = q;
+        live.current = { ...live.current, queue: reordered, shuffleOn: true };
+        setQueue(reordered);
+      }
+      setShuffleOn(true);
+      return;
+    }
+    const original = originalQueue.current;
+    originalQueue.current = null;
+    if (original && i >= 0) {
+      const currentId = q[i]?.id;
+      const restoredIndex = original.findIndex((t) => t.id === currentId);
+      if (restoredIndex >= 0) {
+        live.current = { ...live.current, queue: original, index: restoredIndex, shuffleOn: false };
+        setQueue(original);
+        setIndex(restoredIndex);
+      }
+    }
+    setShuffleOn(false);
+  }, []);
   const cycleRepeat = useCallback(
     () => setRepeat((r) => (r === "off" ? "all" : r === "all" ? "one" : "off")),
     [],
@@ -469,6 +505,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       repeat,
       expanded,
       launching,
+      hiddenYouTube,
       backgroundSafe,
       setBackgroundSafe,
       setExpanded,
@@ -487,7 +524,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }),
     [
       current, queue, index, playing, buffering, position, duration, shuffleOn, repeat, expanded,
-      launching, backgroundSafe, setBackgroundSafe, playTracks, launch, prime, stop, toggle, next, previous, seek, toggleShuffle, cycleRepeat,
+      launching, hiddenYouTube, backgroundSafe, setBackgroundSafe, playTracks, launch, prime, stop, toggle, next, previous, seek, toggleShuffle, cycleRepeat,
       jumpTo, showVideoAt,
     ],
   );

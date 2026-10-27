@@ -27,6 +27,20 @@ function roundRobin(lists: Track[][], limit: number): Track[] {
   return out;
 }
 
+/** Orders a source's results so titles/artists that contain more of the query words come first. */
+function rankByRelevance(tracks: Track[], query: string): Track[] {
+  const words = query.split(" ").filter((w) => w.length > 1);
+  if (words.length === 0) return tracks;
+  const score = (t: Track) => {
+    const hay = `${t.title} ${t.artist}`.toLowerCase();
+    return words.filter((w) => hay.includes(w)).length;
+  };
+  return tracks
+    .map((track, i) => ({ track, i, s: score(track) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.track);
+}
+
 /**
  * Unified audio search across YouTube (when a key is configured), Jamendo (when configured),
  * Openverse and the Internet Archive. Failing sources are skipped so one outage never blocks playback.
@@ -50,7 +64,10 @@ export async function searchAll(rawQuery: string, limit = 30): Promise<Track[]> 
     return [];
   });
 
-  const tracks = roundRobin(lists, 40);
+  const tracks = roundRobin(
+    lists.map((l) => (l[0]?.source === "youtube" ? l : rankByRelevance(l, query))), // YouTube's own ranking is already relevance-ordered
+    40,
+  );
   if (tracks.length > 0) {
     if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value as string);
     cache.set(query, { at: Date.now(), tracks });

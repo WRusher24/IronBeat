@@ -44,15 +44,15 @@ async function resolveTrack(identifier: string, title: string, artist: string): 
 }
 
 export async function searchArchive(query: string, limit = 6): Promise<Track[]> {
-  const cleaned = query.replace(/["\\()[\]{}:^~*?]/g, " ").trim();
-  if (!cleaned) return [];
+  const tokens = query.replace(/["\\()[\]{}:^~*?]/g, " ").split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return [];
+  const cleaned = tokens.join(" AND ");
   const url =
     "https://archive.org/advancedsearch.php?" +
     new URLSearchParams({
       q: `(${cleaned}) AND mediatype:audio`,
       rows: String(limit),
       output: "json",
-      sort: "downloads desc",
     }) +
     "&fl[]=identifier&fl[]=title&fl[]=creator";
   const result = await fetchJson<AdvancedSearch>(url);

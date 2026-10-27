@@ -160,6 +160,22 @@ export function SearchHome({ displayName }: { displayName: string }) {
       {results && (
         <section className="mt-8" aria-live="polite">
           <SectionTitle>{resultsQuery === "Smart Shuffle" ? "Smart Shuffle" : `Results for “${resultsQuery}”`}</SectionTitle>
+          {player.hiddenYouTube > 0 && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-line p-3 text-sm">
+              <span className="text-muted">
+                {player.hiddenYouTube} YouTube {player.hiddenYouTube === 1 ? "result is" : "results are"} hidden so music keeps playing when your phone is locked.
+              </span>
+              <button
+                onClick={() => {
+                  player.setBackgroundSafe(false);
+                  void runSearch(resultsQuery);
+                }}
+                className="shrink-0 rounded-full bg-card px-4 py-2 font-semibold text-card-fg"
+              >
+                Show
+              </button>
+            </div>
+          )}
           {results.length === 0 ? (
             <p className="rounded-3xl border border-dashed border-line p-6 text-center text-sm text-muted">
               Nothing playable found. Try different words, e.g. “gym motivation”.
