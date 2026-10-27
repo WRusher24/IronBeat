@@ -45,7 +45,7 @@ export function SettingsView({ displayName, email }: { displayName: string; emai
           <span>
             <span className="block font-bold">Background-safe mode</span>
             <span className="block text-sm text-muted">
-              Skips YouTube tracks, which iOS stops when you lock the phone or leave the app. Everything else keeps playing.
+              Off by default. Turn on only if YouTube tracks stop when you lock the phone: it skips YouTube and plays open-source tracks, which iOS keeps playing.
             </span>
           </span>
           <span className={`flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition ${player.backgroundSafe ? "bg-accent" : "bg-line"}`}>

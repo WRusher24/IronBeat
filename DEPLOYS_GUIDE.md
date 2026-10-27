@@ -87,7 +87,7 @@ Production notes:
 
 ## 6. Audio source behaviour and limitations
 
-- **YouTube** tracks play through the official IFrame Player (shown as a small video in the full-screen player). Embedded YouTube audio does not keep playing on iOS when the screen locks or the app is minimised (Apple/YouTube restriction; downloading streams to work around it would violate YouTube's terms). The **Background-safe mode** setting (default on for iOS) filters YouTube tracks out so every queued track is a plain HTML5 stream. IronBeat keeps a silent media element alive and registers Media Session handlers to maximise lock-screen and AirPods control, but results vary by iOS version.
+- **YouTube** tracks play through the official IFrame Player (shown as a small video in the full-screen player). Embedded YouTube audio does not keep playing on iOS when the screen locks or the app is minimised (Apple/YouTube restriction; downloading streams to work around it would violate YouTube's terms). The **Background-safe mode** setting (opt-in, off by default) filters YouTube tracks out so every queued track is a plain HTML5 stream. IronBeat keeps a silent media element alive and registers Media Session handlers to maximise lock-screen and AirPods control, but results vary by iOS version.
 - **Internet Archive, Openverse and Jamendo** tracks are plain HTML5 audio streams and play reliably in the background with full lock-screen controls. Quality and relevance depend on what those open catalogues host.
 - Search is intentionally submit-based (no search-as-you-type) to protect API quotas.
 - Browsers only allow audio to start after a tap. IronBeat "primes" the audio element at the moment you tap Pump, a chip or a mood, so playback can begin when the search response arrives.

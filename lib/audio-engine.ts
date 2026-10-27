@@ -385,6 +385,12 @@ export class AudioEngine {
       this.listeners.onPlayState(true);
       void this.keepAlive.play().catch(() => undefined);
     } else if (state === YT_PAUSED) {
+      // iOS may pause the embedded player as the page is hidden (lock / minimise). If the user didn't
+      // ask for it, try to resume right away; pauses at other times are respected.
+      if (this.intendedPlaying && document.hidden && Date.now() - this.hiddenAt < 1500) {
+        this.yt?.playVideo();
+        return;
+      }
       this.listeners.onPlayState(false);
       this.keepAlive.pause();
     } else if (state === YT_BUFFERING) {

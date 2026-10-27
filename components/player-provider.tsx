@@ -140,9 +140,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const backgroundSafeRef = useRef(false);
   const [hiddenYouTube, setHiddenYouTube] = useState(0);
 
-  // Default to background-safe on iPhone/iPad, where embedded YouTube audio stops when the screen locks.
+  // YouTube is on by default. Background-safe mode is an opt-in for people whose iOS version suspends the embedded player on lock.
   useEffect(() => {
-    let value = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    let value = false;
     try {
       const stored = localStorage.getItem("ib-background-safe");
       if (stored !== null) value = stored === "1";
