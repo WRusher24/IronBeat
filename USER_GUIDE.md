@@ -58,6 +58,8 @@ Tap **Smart Shuffle** on Home or Folders. IronBeat builds a mix from your liked 
 - A mini-player sits above the bottom bar on every page, with title, thumbnail, play/pause and skip. Tap it to open the full player with seek bar, shuffle, repeat, like, add-to-folder and the "Up next" list.
 - **Lock screen and AirPods:** play, pause, next and previous work from the iPhone lock screen, Control Center and AirPods. Tracks from the open sources (Internet Archive, Openverse, Jamendo) play in the background with full controls. YouTube tracks cannot play with the screen locked on iPhone (Apple stops embedded video). **Settings → Background-safe mode** (on by default on iPhone) skips YouTube tracks so music keeps playing when you lock the phone or leave the app.
 
+**Resume where you left off:** IronBeat remembers your queue, current track and position on your phone. If iOS reloads the app while you're away, reopen it and the mini-player shows your last track, paused at the same spot. Tap play to continue (iOS does not allow music to start by itself on launch).
+
 ## 8. Switch themes
 
 Tap the round colour swatch in the top-right corner of any page (or open **Settings**) and choose:

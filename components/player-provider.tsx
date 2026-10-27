@@ -16,6 +16,69 @@ import { useToast } from "@/components/toast";
 
 export type RepeatMode = "off" | "all" | "one";
 
+const SESSION_KEY = "ib-player-v1";
+const MAX_SAVED_TRACKS = 100;
+
+interface SavedSession {
+  queue: Track[];
+  index: number;
+  position: number;
+  shuffle: boolean;
+  repeat: RepeatMode;
+}
+
+function isTrack(value: unknown): value is Track {
+  const t = value as Partial<Track> | null;
+  return (
+    !!t &&
+    typeof t.id === "string" &&
+    typeof t.title === "string" &&
+    ["youtube", "archive", "openverse", "jamendo"].includes(t.source as string) &&
+    (t.source === "youtube" || typeof t.audioUrl === "string")
+  );
+}
+
+function readSavedSession(): SavedSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as Partial<SavedSession>;
+    if (!Array.isArray(data.queue) || !data.queue.every(isTrack) || data.queue.length === 0) return null;
+    const index = Number.isInteger(data.index) ? Math.min(Math.max(data.index as number, 0), data.queue.length - 1) : 0;
+    return {
+      queue: data.queue,
+      index,
+      position: typeof data.position === "number" && data.position >= 0 ? data.position : 0,
+      shuffle: data.shuffle === true,
+      repeat: data.repeat === "all" || data.repeat === "one" ? data.repeat : "off",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeSavedSession(session: SavedSession): void {
+  try {
+    // Keep a window of the queue around the current track so the saved payload stays small.
+    let { queue, index } = session;
+    if (queue.length > MAX_SAVED_TRACKS) {
+      const start = Math.min(Math.max(index - 10, 0), queue.length - MAX_SAVED_TRACKS);
+      queue = queue.slice(start, start + MAX_SAVED_TRACKS);
+      index -= start;
+    }
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, queue, index }));
+  } catch {
+    /* storage full or unavailable – persistence is best-effort */
+  }
+}
+
+function clearSavedSession(): void {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 interface PlayerContextValue {
   current: Track | null;
   queue: Track[];
@@ -100,6 +163,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const live = useRef({ queue, index, shuffleOn, repeat });
   live.current = { queue, index, shuffleOn, repeat };
   const errorStreak = useRef(0);
+  /** False while a restored session is merely loaded; stops error-skipping from auto-starting music. */
+  const userStarted = useRef(false);
   const positionRef = useRef(0);
 
   const current = index >= 0 ? (queue[index] ?? null) : null;
@@ -108,6 +173,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const list = tracks ?? live.current.queue;
     const track = list[nextIndex];
     if (!track) return;
+    userStarted.current = true;
     live.current = { ...live.current, queue: list, index: nextIndex };
     setQueue(list);
     setIndex(nextIndex);
@@ -163,6 +229,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       onBuffering: setBuffering,
       onEnded: () => advanceRef.current("ended"),
       onError: (message) => {
+        if (!userStarted.current) {
+          setBuffering(false);
+          return;
+        }
         errorStreak.current += 1;
         if (errorStreak.current > Math.min(5, live.current.queue.length)) {
           errorStreak.current = 0;
@@ -176,6 +246,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       },
     });
     engineRef.current = engine;
+
+    // Restore the last session (paused) so a reloaded PWA doesn't look like a first launch.
+    const saved = readSavedSession();
+    if (saved) {
+      const tracks = backgroundSafeRef.current ? saved.queue.filter((t) => t.source !== "youtube") : saved.queue;
+      const wanted = saved.queue[saved.index];
+      const index = Math.max(0, tracks.findIndex((t) => t.id === wanted?.id));
+      const track = tracks[index];
+      if (track) {
+        const startAt = track.id === wanted?.id ? saved.position : 0;
+        live.current = { ...live.current, queue: tracks, index };
+        positionRef.current = startAt;
+        setQueue(tracks);
+        setIndex(index);
+        setPosition(startAt);
+        setDuration(track.durationSec ?? 0);
+        setShuffleOn(saved.shuffle);
+        setRepeat(saved.repeat);
+        void engine.load(track, false, startAt);
+      }
+    }
     return () => {
       engine.destroy();
       engineRef.current = null;
@@ -227,6 +318,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   );
 
   const stop = useCallback(() => {
+    clearSavedSession();
     engineRef.current?.stop();
     live.current = { ...live.current, queue: [], index: -1 };
     setQueue([]);
@@ -242,7 +334,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const engine = engineRef.current;
     if (!engine || live.current.index < 0) return;
     if (playing) engine.pause();
-    else engine.play();
+    else {
+      userStarted.current = true;
+      engine.play();
+    }
   }, [playing]);
 
   const next = useCallback(() => advance("skip"), [advance]);
@@ -270,6 +365,29 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   );
   const jumpTo = useCallback((i: number) => startIndex(i), [startIndex]);
   const showVideoAt = useCallback((rect: DOMRect | null) => engineRef.current?.showVideoAt(rect), []);
+
+  // Persist the session: immediately on structural changes, and every few seconds / on hide for position.
+  const persist = useCallback(() => {
+    const { queue: q, index: i, shuffleOn: shuf, repeat: rep } = live.current;
+    if (i < 0 || q.length === 0) return;
+    writeSavedSession({ queue: q, index: i, position: positionRef.current, shuffle: shuf, repeat: rep });
+  }, []);
+
+  useEffect(() => {
+    persist();
+  }, [queue, index, shuffleOn, repeat, persist]);
+
+  useEffect(() => {
+    const timer = window.setInterval(persist, 5000);
+    const onHide = () => persist();
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onHide);
+    };
+  }, [persist]);
 
   // Lock-screen / AirPods / Control Center integration.
   useEffect(() => {
@@ -311,7 +429,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!("mediaSession" in navigator)) return;
     const session = navigator.mediaSession;
     const handlers: [MediaSessionAction, MediaSessionActionHandler][] = [
-      ["play", () => engineRef.current?.play()],
+      ["play", () => { userStarted.current = true; engineRef.current?.play(); }],
       ["pause", () => engineRef.current?.pause()],
       ["previoustrack", () => previous()],
       ["nexttrack", () => advanceRef.current("skip")],

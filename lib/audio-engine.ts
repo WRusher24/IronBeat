@@ -2,8 +2,8 @@ import type { Track } from "@/lib/types";
 
 /* Minimal typings for the parts of the YouTube IFrame Player API we use. */
 interface YTPlayer {
-  loadVideoById(videoId: string): void;
-  cueVideoById(videoId: string): void;
+  loadVideoById(arg: string | { videoId: string; startSeconds?: number }): void;
+  cueVideoById(arg: string | { videoId: string; startSeconds?: number }): void;
   playVideo(): void;
   pauseVideo(): void;
   stopVideo(): void;
@@ -215,11 +215,12 @@ export class AudioEngine {
     void this.keepAlive.play().then(() => this.keepAlive.pause()).catch(() => undefined);
   }
 
-  async load(track: Track, autoplay = true): Promise<void> {
+  /** `startAt` (seconds) is used when restoring a saved session; pair it with autoplay=false. */
+  async load(track: Track, autoplay = true, startAt = 0): Promise<void> {
     const token = ++this.loadToken;
     this.intendedPlaying = autoplay;
-    this.listeners.onProgress(0, track.durationSec ?? 0);
-    this.listeners.onBuffering(true);
+    this.listeners.onProgress(startAt, track.durationSec ?? 0);
+    this.listeners.onBuffering(autoplay);
 
     if (track.source === "youtube") {
       this.audio.pause();
@@ -229,8 +230,9 @@ export class AudioEngine {
         const player = await this.ensureYouTube();
         if (token !== this.loadToken) return;
         this.startYtTimer();
-        if (autoplay) player.loadVideoById(track.sourceId);
-        else player.cueVideoById(track.sourceId);
+        const target = { videoId: track.sourceId, startSeconds: startAt };
+        if (autoplay) player.loadVideoById(target);
+        else player.cueVideoById(target);
         player.setVolume(this.volume * 100);
       } catch (err) {
         if (token === this.loadToken) {
@@ -248,6 +250,9 @@ export class AudioEngine {
     }
     this.audio.src = track.audioUrl;
     this.audio.volume = this.volume;
+    if (startAt > 0) {
+      this.audio.addEventListener("loadedmetadata", () => (this.audio.currentTime = startAt), { once: true });
+    }
     if (!autoplay) return;
     try {
       await this.audio.play();
