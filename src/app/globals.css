@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme tokens are space-separated RGB triplets so Tailwind opacity modifiers work. */
+:root,
+[data-theme="warm-neutral"] {
+  --bg: 245 242 236; /* #F5F2EC */
+  --fg: 28 28 30; /* #1C1C1E */
+  --muted: 107 101 92;
+  --card: 28 28 30; /* #1C1C1E */
+  --card-fg: 245 242 236;
+  --card-muted: 163 158 148;
+  --accent: 212 163 115; /* #D4A373 */
+  --accent-fg: 28 28 30;
+  color-scheme: light;
+}
+
+[data-theme="monochrome-ink"] {
+  --bg: 11 11 12;
+  --fg: 242 240 235;
+  --muted: 142 142 147;
+  --card: 25 25 27;
+  --card-fg: 242 240 235;
+  --card-muted: 142 142 147;
+  --accent: 242 240 235;
+  --accent-fg: 11 11 12;
+  color-scheme: dark;
+}
+
+[data-theme="sunset-glow"] {
+  --bg: 251 246 238; /* #FBF6EE */
+  --fg: 28 28 30;
+  --muted: 110 101 94;
+  --card: 28 28 30;
+  --card-fg: 251 246 238;
+  --card-muted: 176 167 159;
+  --accent: 230 95 43; /* #E65F2B */
+  --accent-fg: 255 255 255;
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    background: rgb(var(--bg));
+  }
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+    -webkit-touch-callout: none;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* prevents iOS Safari focus-zoom */
+    -webkit-touch-callout: default;
+    user-select: text;
+  }
+  button {
+    touch-action: manipulation;
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .card-surface {
+    @apply bg-card text-card-fg rounded-3xl;
+  }
+  .btn-accent {
+    @apply bg-accent text-accent-fg font-semibold rounded-full px-5 min-h-12 inline-flex items-center justify-center gap-2 active:scale-[0.97] transition disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply border border-fg/20 text-fg font-medium rounded-full px-5 min-h-12 inline-flex items-center justify-center gap-2 active:scale-[0.97] transition disabled:opacity-50;
+  }
+  .field {
+    @apply w-full min-h-12 rounded-2xl bg-fg/[0.06] border border-fg/15 px-4 text-fg placeholder:text-muted focus:border-accent focus:outline-none;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}

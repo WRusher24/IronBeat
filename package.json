@@ -1,0 +1,43 @@
+{
+  "name": "ironbeat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IronBeat - workout music streaming and playlist PWA",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/generate-icons.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.45.4",
+    "jose": "^6.2.13",
+    "next": "^15.5.28",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "autoprefixer": "^10.6.2",
+    "drizzle-kit": "^0.31.11",
+    "postcss": "^8.5.32",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3"
+  }
+}
