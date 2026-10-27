@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Search, Shuffle, X } from "lucide-react";
 import { api } from "@/lib/client-api";
 import type { Track } from "@/lib/types";
@@ -158,7 +157,7 @@ export function SearchHome({ displayName }: { displayName: string }) {
         <Shuffle className="h-6 w-6" />
       </button>
 
-      {results ? (
+      {results && (
         <section className="mt-8" aria-live="polite">
           <SectionTitle>{resultsQuery === "Smart Shuffle" ? "Smart Shuffle" : `Results for “${resultsQuery}”`}</SectionTitle>
           {results.length === 0 ? (
@@ -169,24 +168,16 @@ export function SearchHome({ displayName }: { displayName: string }) {
             <TrackList tracks={results} onPlay={(i) => { player.prime(); player.playTracks(results, i); }} />
           )}
         </section>
-      ) : (
-        <section className="mt-8">
-          <SectionTitle
-            action={
-              <Link href="/moods" className="text-sm font-semibold underline underline-offset-4">
-                All moods
-              </Link>
-            }
-          >
-            Vibe deck
-          </SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
-            {MOODS.slice(0, 4).map((mood) => (
-              <MoodCard key={mood.id} mood={mood} />
-            ))}
-          </div>
-        </section>
       )}
+
+      <section className="mt-8">
+        <SectionTitle>Vibe deck</SectionTitle>
+        <div className="grid grid-cols-2 gap-3">
+          {MOODS.map((mood) => (
+            <MoodCard key={mood.id} mood={mood} />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

@@ -5,14 +5,17 @@ import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { api } from "@/lib/client-api";
 import { Button } from "@/components/ui";
+import { usePlayer } from "@/components/player-provider";
 import { ThemePicker } from "@/components/theme-switcher";
 
 export function SettingsView({ displayName, email }: { displayName: string; email: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const player = usePlayer();
 
   async function signOut() {
     setLoading(true);
+    player.stop(); // the player now lives at the root, so end playback explicitly on sign-out
     await api("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     router.replace("/login");
     router.refresh();

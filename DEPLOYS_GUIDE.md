@@ -57,7 +57,7 @@ npm run dev            # http://localhost:3000
 1. Open `/register`, create an account. You land on Home immediately (no approval step).
 2. Search `workout nasheed` and press **Pump**. The first result plays and the rest is queued; let a track end to confirm the next one auto-plays.
 3. Reload. Your search appears as a chip under the search bar; tap it to relaunch.
-4. Open **Moods** and tap a card. A mixed playlist starts.
+4. Scroll the Vibe deck on Home and tap a card. A mixed playlist starts.
 5. Tap `+` on a track, create a folder, then open **Folders** and confirm the track is there.
 6. Heart a few tracks, then use **Smart Shuffle**.
 7. Switch themes from the header dropdown and from **Settings**; reload to confirm persistence.

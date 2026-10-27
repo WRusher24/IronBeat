@@ -20,7 +20,6 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: "Search", short_name: "Search", url: "/", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
-      { name: "Moods", short_name: "Moods", url: "/moods", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Training folders", short_name: "Folders", url: "/playlists", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
     ],
   };

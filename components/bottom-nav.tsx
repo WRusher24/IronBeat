@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, Home, LayoutGrid, ListMusic, Settings } from "lucide-react";
+import { Heart, Home, ListMusic, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/moods", label: "Moods", icon: LayoutGrid },
   { href: "/playlists", label: "Folders", icon: ListMusic },
   { href: "/favorites", label: "Liked", icon: Heart },
   { href: "/settings", label: "Settings", icon: Settings },

@@ -37,7 +37,7 @@ Every search that finds music becomes a chip under the search bar. Swipe the row
 
 ## 5. Moods (Vibe deck)
 
-Open **Moods** (or use the cards on Home). Each card is a ready-made training energy:
+The **Vibe deck** sits on the Home screen below the search bar; scroll down to see every card. Each card is a ready-made training energy:
 
 ⚡ Phonk & Hype · 🎧 Focus & Nasheed · 🔥 Aggressive Lift · 🧊 Cool Down · 🔊 Heavy Bass · 🦍 Beast Mode · 🏃 Cardio Flow · 🌆 Synthwave Energy · 🎤 Gym Speeches · 🎤 Hip-Hop Grind
 

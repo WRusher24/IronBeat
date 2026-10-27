@@ -33,6 +33,8 @@ interface PlayerContextValue {
   /** Primes audio inside the tap, runs the loader, then plays the returned list from the top. */
   launch(label: string, loader: () => Promise<Track[]>): Promise<Track[]>;
   prime(): void;
+  /** Stops playback and clears the queue (used on sign-out). */
+  stop(): void;
   toggle(): void;
   next(): void;
   previous(): void;
@@ -147,7 +149,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     });
     engineRef.current = engine;
     return () => {
-      engine.stop();
+      engine.destroy();
       engineRef.current = null;
     };
   }, [notify]);
@@ -185,6 +187,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [notify, playTracks],
   );
 
+  const stop = useCallback(() => {
+    engineRef.current?.stop();
+    live.current = { ...live.current, queue: [], index: -1 };
+    setQueue([]);
+    setIndex(-1);
+    setPlaying(false);
+    setBuffering(false);
+    setPosition(0);
+    setDuration(0);
+    setExpanded(false);
+  }, []);
+
   const toggle = useCallback(() => {
     const engine = engineRef.current;
     if (!engine || live.current.index < 0) return;
@@ -221,9 +235,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Lock-screen / AirPods / Control Center integration.
   useEffect(() => {
     if (!("mediaSession" in navigator) || !current) return;
-    const artwork = current.thumbnail
-      ? [{ src: current.thumbnail, sizes: "512x512", type: "image/jpeg" }]
-      : [{ src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }];
+    const src = current.thumbnail ?? "/icons/icon-512.png";
+    const type = current.thumbnail ? undefined : "image/png";
+    const artwork = ["96x96", "128x128", "192x192", "256x256", "384x384", "512x512"].map((sizes) => ({
+      src,
+      sizes,
+      ...(type ? { type } : {}),
+    }));
     navigator.mediaSession.metadata = new MediaMetadata({
       title: current.title,
       artist: current.artist || "IronBeat",
@@ -258,6 +276,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       ["pause", () => engineRef.current?.pause()],
       ["previoustrack", () => previous()],
       ["nexttrack", () => advanceRef.current("skip")],
+      ["stop", () => stop()],
       ["seekto", (d) => d.seekTime !== undefined && seek(d.seekTime)],
       ["seekbackward", (d) => seek(Math.max(0, positionRef.current - (d.seekOffset ?? 10)))],
       ["seekforward", (d) => seek(positionRef.current + (d.seekOffset ?? 10))],
@@ -278,7 +297,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         }
       }
     };
-  }, [previous, seek]);
+  }, [previous, seek, stop]);
 
   const value = useMemo<PlayerContextValue>(
     () => ({
@@ -297,6 +316,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       playTracks,
       launch,
       prime,
+      stop,
       toggle,
       next,
       previous,
@@ -308,7 +328,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }),
     [
       current, queue, index, playing, buffering, position, duration, shuffleOn, repeat, expanded,
-      launching, playTracks, launch, prime, toggle, next, previous, seek, toggleShuffle, cycleRepeat,
+      launching, playTracks, launch, prime, stop, toggle, next, previous, seek, toggleShuffle, cycleRepeat,
       jumpTo, showVideoAt,
     ],
   );

@@ -119,17 +119,50 @@ export class AudioEngine {
 
   constructor(private listeners: EngineListeners) {
     this.silenceUrl = createSilenceUrl();
-    this.audio = new Audio();
+    // Both elements are attached to the DOM and flagged inline/playback so iOS treats them as a
+    // persistent media session that keeps running when the app is backgrounded or the screen locks.
+    this.audio = this.createMediaElement();
     this.audio.preload = "auto";
-    this.audio.setAttribute("playsinline", "");
-    this.keepAlive = new Audio(this.silenceUrl);
+    this.keepAlive = this.createMediaElement();
+    this.keepAlive.src = this.silenceUrl;
     this.keepAlive.loop = true;
-    this.keepAlive.setAttribute("playsinline", "");
+    this.setAudioSessionPlayback();
     this.bindAudioEvents();
   }
 
   setListeners(listeners: EngineListeners) {
     this.listeners = listeners;
+  }
+
+  private createMediaElement(): HTMLAudioElement {
+    const el = document.createElement("audio");
+    el.setAttribute("playsinline", "");
+    el.setAttribute("webkit-playsinline", "");
+    el.setAttribute("x-webkit-airplay", "allow");
+    (el as HTMLAudioElement & { playsInline: boolean }).playsInline = true;
+    el.autoplay = false;
+    Object.assign(el.style, {
+      position: "fixed",
+      width: "0",
+      height: "0",
+      opacity: "0",
+      pointerEvents: "none",
+    });
+    el.setAttribute("aria-hidden", "true");
+    document.body.appendChild(el);
+    return el;
+  }
+
+  /** Safari 16.4+/iOS 17: declare "playback" so audio keeps going on lock and ignores the mute switch. */
+  private setAudioSessionPlayback(): void {
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (session) {
+      try {
+        session.type = "playback";
+      } catch {
+        /* unsupported value on this browser */
+      }
+    }
   }
 
   private bindAudioEvents() {
@@ -157,6 +190,7 @@ export class AudioEngine {
    * asynchronous playback on elements that were started by a gesture first.
    */
   prime(): void {
+    this.setAudioSessionPlayback();
     if (!this.audio.getAttribute("src") || this.audio.src === this.silenceUrl) {
       this.audio.src = this.silenceUrl;
       void this.audio.play().catch(() => undefined);
@@ -234,6 +268,14 @@ export class AudioEngine {
     this.volume = Math.min(1, Math.max(0, value));
     this.audio.volume = this.volume;
     this.yt?.setVolume(this.volume * 100);
+  }
+
+  /** Tears down playback and removes the media elements (only used when the provider unmounts). */
+  destroy(): void {
+    this.stop();
+    this.audio.remove();
+    this.keepAlive.remove();
+    this.ytHost?.remove();
   }
 
   stop(): void {

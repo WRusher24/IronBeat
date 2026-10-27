@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { DEFAULT_THEME, THEME_COOKIE, isThemeId, themeById } from "@/lib/themes";
+import { RootProviders } from "@/components/root-providers";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import "./globals.css";
 
@@ -45,7 +46,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en" data-theme={theme}>
       <body>
-        {children}
+        <RootProviders>{children}</RootProviders>
         <ServiceWorkerRegister />
       </body>
     </html>
