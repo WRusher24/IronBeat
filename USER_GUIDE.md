@@ -56,7 +56,7 @@ Tap **Smart Shuffle** on Home or Folders. IronBeat builds a mix from your liked 
 ## 7. The player
 
 - A mini-player sits above the bottom bar on every page, with title, thumbnail, play/pause and skip. Tap it to open the full player with seek bar, shuffle, repeat, like, add-to-folder and the "Up next" list.
-- **Lock screen and AirPods:** play, pause, next and previous work from the iPhone lock screen, Control Center and AirPods. Tracks from the open sources (Internet Archive, Openverse, Jamendo) play in the background with full controls. YouTube tracks follow Apple's rules for embedded video and may pause when the screen locks. If that happens, open the app and tap play.
+- **Lock screen and AirPods:** play, pause, next and previous work from the iPhone lock screen, Control Center and AirPods. Tracks from the open sources (Internet Archive, Openverse, Jamendo) play in the background with full controls. YouTube tracks cannot play with the screen locked on iPhone (Apple stops embedded video). **Settings → Background-safe mode** (on by default on iPhone) skips YouTube tracks so music keeps playing when you lock the phone or leave the app.
 
 ## 8. Switch themes
 

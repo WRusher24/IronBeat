@@ -28,6 +28,9 @@ interface PlayerContextValue {
   repeat: RepeatMode;
   expanded: boolean;
   launching: string | null;
+  /** When on, YouTube tracks are skipped because iOS cannot keep them playing with the screen locked. */
+  backgroundSafe: boolean;
+  setBackgroundSafe(value: boolean): void;
   setExpanded(value: boolean): void;
   playTracks(tracks: Track[], startIndex?: number): void;
   /** Primes audio inside the tap, runs the loader, then plays the returned list from the top. */
@@ -67,6 +70,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [repeat, setRepeat] = useState<RepeatMode>("off");
   const [expanded, setExpanded] = useState(false);
   const [launching, setLaunching] = useState<string | null>(null);
+  const [backgroundSafe, setBackgroundSafeState] = useState(false);
+  const backgroundSafeRef = useRef(false);
+
+  // Default to background-safe on iPhone/iPad, where embedded YouTube audio stops when the screen locks.
+  useEffect(() => {
+    let value = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    try {
+      const stored = localStorage.getItem("ib-background-safe");
+      if (stored !== null) value = stored === "1";
+    } catch {
+      /* storage unavailable */
+    }
+    backgroundSafeRef.current = value;
+    setBackgroundSafeState(value);
+  }, []);
+
+  const setBackgroundSafe = useCallback((value: boolean) => {
+    backgroundSafeRef.current = value;
+    setBackgroundSafeState(value);
+    try {
+      localStorage.setItem("ib-background-safe", value ? "1" : "0");
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
 
   // Latest values for engine callbacks, which outlive individual renders.
   const live = useRef({ queue, index, shuffleOn, repeat });
@@ -155,12 +183,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [notify]);
 
   const playTracks = useCallback(
-    (tracks: Track[], start = 0) => {
+    (input: Track[], start = 0) => {
+      let tracks = input;
+      let first = Math.min(Math.max(start, 0), input.length - 1);
+      if (backgroundSafeRef.current) {
+        const wanted = input[first];
+        tracks = input.filter((t) => t.source !== "youtube");
+        first = Math.max(0, tracks.findIndex((t) => t.id === wanted?.id));
+        if (tracks.length === 0 && input.length > 0) {
+          notify("Background-safe mode is on: YouTube tracks are skipped. Turn it off in Settings to play them.");
+        }
+      }
       if (tracks.length === 0) return;
       errorStreak.current = 0;
-      startIndex(Math.min(Math.max(start, 0), tracks.length - 1), tracks);
+      startIndex(first, tracks);
     },
-    [startIndex],
+    [startIndex, notify],
   );
 
   const prime = useCallback(() => engineRef.current?.prime(), []);
@@ -170,7 +208,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       engineRef.current?.prime();
       setLaunching(label);
       try {
-        const tracks = await loader();
+        const loaded = await loader();
+        const tracks = backgroundSafeRef.current ? loaded.filter((t) => t.source !== "youtube") : loaded;
         if (tracks.length === 0) {
           notify("No playable tracks found. Try another search.");
         } else {
@@ -312,6 +351,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       repeat,
       expanded,
       launching,
+      backgroundSafe,
+      setBackgroundSafe,
       setExpanded,
       playTracks,
       launch,
@@ -328,7 +369,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }),
     [
       current, queue, index, playing, buffering, position, duration, shuffleOn, repeat, expanded,
-      launching, playTracks, launch, prime, stop, toggle, next, previous, seek, toggleShuffle, cycleRepeat,
+      launching, backgroundSafe, setBackgroundSafe, playTracks, launch, prime, stop, toggle, next, previous, seek, toggleShuffle, cycleRepeat,
       jumpTo, showVideoAt,
     ],
   );

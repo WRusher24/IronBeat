@@ -115,6 +115,9 @@ export class AudioEngine {
   private ytTimer: number | null = null;
   private activeBackend: "html5" | "youtube" | null = null;
   private loadToken = 0;
+  private hiddenAt = 0;
+  /** True from the moment playback is requested until the user (or end of queue) stops it. */
+  private intendedPlaying = false;
   private volume = 1;
 
   constructor(private listeners: EngineListeners) {
@@ -168,7 +171,21 @@ export class AudioEngine {
   private bindAudioEvents() {
     const a = this.audio;
     a.addEventListener("play", () => this.activeBackend === "html5" && this.listeners.onPlayState(true));
-    a.addEventListener("pause", () => this.activeBackend === "html5" && this.listeners.onPlayState(false));
+    a.addEventListener("pause", () => {
+      if (this.activeBackend !== "html5") return;
+      // iOS sometimes pauses the element right as the page is hidden (minimise / lock). If the user
+      // did not ask for the pause, resume immediately. Pauses at any other time (e.g. AirPods
+      // removed, phone call, lock-screen pause button) are respected.
+      const justHidden = document.hidden && Date.now() - this.hiddenAt < 1500;
+      if (this.intendedPlaying && justHidden && !a.ended) {
+        void a.play().catch(() => this.listeners.onPlayState(false));
+        return;
+      }
+      this.listeners.onPlayState(false);
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) this.hiddenAt = Date.now();
+    });
     a.addEventListener("waiting", () => this.activeBackend === "html5" && this.listeners.onBuffering(true));
     a.addEventListener("playing", () => this.activeBackend === "html5" && this.listeners.onBuffering(false));
     a.addEventListener("canplay", () => this.activeBackend === "html5" && this.listeners.onBuffering(false));
@@ -200,6 +217,7 @@ export class AudioEngine {
 
   async load(track: Track, autoplay = true): Promise<void> {
     const token = ++this.loadToken;
+    this.intendedPlaying = autoplay;
     this.listeners.onProgress(0, track.durationSec ?? 0);
     this.listeners.onBuffering(true);
 
@@ -246,11 +264,13 @@ export class AudioEngine {
   }
 
   play(): void {
+    this.intendedPlaying = true;
     if (this.activeBackend === "youtube") this.yt?.playVideo();
     else if (this.activeBackend === "html5") void this.audio.play().catch(() => undefined);
   }
 
   pause(): void {
+    this.intendedPlaying = false;
     if (this.activeBackend === "youtube") this.yt?.pauseVideo();
     else this.audio.pause();
   }
@@ -279,6 +299,7 @@ export class AudioEngine {
   }
 
   stop(): void {
+    this.intendedPlaying = false;
     this.loadToken++;
     this.audio.pause();
     this.audio.removeAttribute("src");

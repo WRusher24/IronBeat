@@ -35,6 +35,26 @@ export function SettingsView({ displayName, email }: { displayName: string; emai
       </section>
 
       <section>
+        <h2 className="mb-3 text-xl font-extrabold">Lock-screen playback</h2>
+        <button
+          onClick={() => player.setBackgroundSafe(!player.backgroundSafe)}
+          role="switch"
+          aria-checked={player.backgroundSafe}
+          className="flex min-h-16 w-full items-center justify-between gap-4 rounded-3xl border border-line p-4 text-left"
+        >
+          <span>
+            <span className="block font-bold">Background-safe mode</span>
+            <span className="block text-sm text-muted">
+              Skips YouTube tracks, which iOS stops when you lock the phone or leave the app. Everything else keeps playing.
+            </span>
+          </span>
+          <span className={`flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition ${player.backgroundSafe ? "bg-accent" : "bg-line"}`}>
+            <span className={`h-6 w-6 rounded-full bg-white shadow transition ${player.backgroundSafe ? "translate-x-6" : ""}`} />
+          </span>
+        </button>
+      </section>
+
+      <section>
         <h2 className="mb-3 text-xl font-extrabold">Install on iPhone</h2>
         <ol className="list-decimal space-y-1 rounded-3xl border border-line p-5 pl-9 text-sm text-muted">
           <li>Open IronBeat in Safari.</li>
